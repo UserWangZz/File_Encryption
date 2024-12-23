@@ -9,8 +9,11 @@
 
 
 from PyQt5 import QtCore, QtGui, QtWidgets
-from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QPushButton, QFileDialog, QLabel
-
+from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QPushButton, QFileDialog, QLabel, QMessageBox
+from encryption.decryption import decrypt_key, decrypt_file
+from encryption.encryption import encrypt_file
+from qt.utils import get_usb_drives, get_resource_path
+import os
 
 class Ui_widget(object):
     def setupUi(self, widget):
@@ -186,11 +189,18 @@ class Ui_widget(object):
         self.verticalLayout.setStretch(0, 2)
         self.verticalLayout.setStretch(1, 8)
         self.verticalLayout.setStretch(2, 1)
-        self.encryption_input_button.clicked.connect(self.select_file)
         self.retranslateUi(widget)
 
-        QtCore.QMetaObject.connectSlotsByName(widget)
+        self.encryption_input_button.clicked.connect(lambda: self.select_file(self.encryption_input_lineEdit))
+        self.encryption_output_button.clicked.connect(lambda: self.select_folder(self.encrytion_output_lineEdit))
 
+        self.decryption_input_button.clicked.connect(lambda: self.select_file(self.decryption_input_lineEdit))
+        self.decryption_output_button.clicked.connect(lambda: self.select_folder(self.decryption_output_lineEdit))
+
+        self.encryption_button.clicked.connect(self.encryption_data)
+        self.decryption_button.clicked.connect(self.decryption_data)
+
+        QtCore.QMetaObject.connectSlotsByName(widget)
 
     def retranslateUi(self, widget):
         _translate = QtCore.QCoreApplication.translate
@@ -199,7 +209,7 @@ class Ui_widget(object):
         self.encryption_input_label.setText(_translate("widget", "选择加密文件"))
         self.encryption_input_button.setText(_translate("widget", "选择文件"))
         self.encryption_output_label.setText(_translate("widget", "选择输出地址"))
-        self.encryption_output_button.setText(_translate("widget", "选择文件"))
+        self.encryption_output_button.setText(_translate("widget", "选择文件地址"))
         self.encryption_button.setText(_translate("widget", "加密"))
         self.decryption_input_label.setText(_translate("widget", "选择解密文件"))
         self.decryption_input_button.setText(_translate("widget", "选择文件"))
@@ -215,19 +225,70 @@ class Ui_widget(object):
         self.decryption_file_selector.setItemText(6, _translate("widget", "zip"))
         self.decryption_button.setText(_translate("widget", "解密"))
         self.encryption_input_lineEdit.setText("请选择需要加密的文件...")
+        self.encrytion_output_lineEdit.setText("未选择输出文件路径...")
 
-
-    def select_file(self):
+    def select_file(self, line_edit):
         # 打开文件选择对话框
         file_path, _ = QFileDialog.getOpenFileName(None, '选择文件', '', '所有文件 (*)')
         if file_path:
-            self.encryption_input_lineEdit.setText(f'{file_path}')
+            line_edit.setText(f'{file_path}')
+            # self.log.setText(f"加密选择文件：{file_path}")
         else:
-            self.encryption_input_lineEdit.setText('未选择文件')
+            line_edit.setText('未选择文件')
+
+    def select_folder(self, line_edit):
+        # 打开文件夹选择对话框
+        folder_path = QFileDialog.getExistingDirectory(self.verticalLayoutWidget, "选择文件夹", "")
+        if folder_path:
+            line_edit.setText(folder_path)
+        else:
+            line_edit.setText("未选择文件夹")
+
+    def encryption_data(self):
+        self.log.setText("加密中...")
+        data_path = self.encryption_input_lineEdit.text()
+        output_path = self.encrytion_output_lineEdit.text()
+        # 获取U盘盘符，加载密钥地址
+        usb_drives = get_usb_drives()
+        private_key = get_resource_path('key/private_key.pem')
+        aes_key = decrypt_key(f'{usb_drives[0]}/.key/key.enc', private_key)
+        # 获取文件名以及后缀
+        file_name_with_extension = os.path.basename(data_path)
+        file_name_without_extension, file_extension = os.path.splitext(file_name_with_extension)
+        try:
+            encrypt_file(input_path=data_path, output_path=f"{output_path}/{file_name_without_extension}.enc",
+                         key=aes_key)
+            QMessageBox.information(self.verticalLayoutWidget, "提示", "文件加密完成！")
+        except Exception as e:
+            QMessageBox.critical(self.verticalLayoutWidget, "错误", f"加密失败：{str(e)}")
+        self.log.setText('加密完成！')
+
+    def decryption_data(self):
+        self.log.setText('解密中...')
+        data_path = self.decryption_input_lineEdit.text()
+        output_path = self.decryption_output_lineEdit.text()
+
+        output_filename_without_extension = self.decryption_filename_lineEdit.text()
+        output_file_extension_name = self.decryption_file_selector.currentText()
+        if output_filename_without_extension is None or output_filename_without_extension == '':
+            final_output_path = output_path+'temp.tmp'
+
+        usb_drives = get_usb_drives()
+        private_key = get_resource_path('key/private_key.pem')
+        aes_key = decrypt_key(f"{usb_drives[0]}/.key/key.enc", private_key)
+
+        try:
+            decrypt_file(f"{data_path}", f"{output_path}/{output_filename_without_extension}.{output_file_extension_name}",
+                         aes_key)
+            QMessageBox.information(self.verticalLayoutWidget, "提示", "文件解密完成！")
+        except Exception as e:
+            QMessageBox.critical(self.verticalLayoutWidget, "错误", f"解密失败：{str(e)}")
+        self.log.setText('解密完成!')
 
 
 if __name__ == "__main__":
     import sys
+
     app = QtWidgets.QApplication(sys.argv)
     widget = QtWidgets.QWidget()
     ui = Ui_widget()

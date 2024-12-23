@@ -1,3 +1,7 @@
 ./key
 ./data
 .idea
+./build
+./dist
+main_window.spec
+*.pyc
