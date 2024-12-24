@@ -6,6 +6,7 @@ from cryptography.hazmat.primitives.asymmetric import padding
 import os
 import base64
 
+
 def encrypt_key(key, public_key_path, output_path):
     # 使用 RSA 公钥加密对称密钥
     with open(public_key_path, "rb") as key_file:

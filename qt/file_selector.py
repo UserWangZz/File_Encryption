@@ -1,6 +1,7 @@
 import sys
 from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QPushButton, QFileDialog, QLabel
 
+
 class FileSelector(QWidget):
     def __init__(self):
         super().__init__()
@@ -28,6 +29,7 @@ class FileSelector(QWidget):
             self.label.setText(f'文件路径: {file_path}')
         else:
             self.label.setText('未选择文件')
+
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)

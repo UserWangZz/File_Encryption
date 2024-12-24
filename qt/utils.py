@@ -1,5 +1,7 @@
 import os
 import sys
+
+
 def get_usb_drives():
     usb_drives = []
     if os.name == 'nt':  # Windows 系统
